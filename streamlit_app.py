@@ -441,7 +441,11 @@ def render_map(workloads):
                 showcountries=True, countrycolor="#475569", bgcolor="rgba(0,0,0,0)"),
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         font=dict(color="#e2e8f0"), height=400, margin=dict(l=0, r=0, t=40, b=0),
-        coloraxis_colorbar=dict(title="gCO₂/kWh", tickfont=dict(color="#e2e8f0"), titlefont=dict(color="#e2e8f0")))
+        coloraxis_colorbar=dict(
+            title=dict(text="gCO₂/kWh", font=dict(color="#e2e8f0")),
+            tickfont=dict(color="#e2e8f0")
+        )
+    )
     st.plotly_chart(fig, use_container_width=True)
 
 def render_forecast(region):
