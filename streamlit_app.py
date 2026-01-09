@@ -1,9 +1,6 @@
 """
 BOMOCO - Business-Outcome-Aware Multi-Objective Cloud Optimizer
-Streamlit Cloud Optimized Version
-
-A self-driving cloud platform that optimizes cost, carbon, water, 
-performance, and business KPIs simultaneously.
+Professional UI with Improved Visibility
 """
 
 import streamlit as st
@@ -16,25 +13,16 @@ from datetime import datetime, timedelta
 import sys
 import os
 
-# Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from config import (
-    AWS_REGIONS, AZURE_REGIONS, GCP_REGIONS,
-    GRID_CARBON_BASELINE, DEFAULT_WEIGHTS,
-    PUE_VALUES, INSTANCE_PRICING
-)
+from config import AWS_REGIONS, GRID_CARBON_BASELINE, DEFAULT_WEIGHTS, PUE_VALUES, INSTANCE_PRICING
 from data.sample_data import (
     generate_workload_data, generate_carbon_intensity_forecast,
     generate_cost_forecast, generate_business_metrics,
     generate_optimization_history, calculate_sustainability_metrics
 )
-from utils.multi_objective import (
-    MultiObjectiveOptimizer, BusinessKPICorrelator,
-    SustainabilityScorer, OptimizationAction
-)
+from utils.multi_objective import MultiObjectiveOptimizer, BusinessKPICorrelator, SustainabilityScorer, OptimizationAction
 
-# Claude AI Integration
 try:
     from integrations.claude_ai import ClaudeCloudAssistant, render_ai_chat_interface
     CLAUDE_AVAILABLE = True
@@ -42,96 +30,279 @@ except ImportError:
     CLAUDE_AVAILABLE = False
 
 # =============================================================================
-# STREAMLIT CLOUD CONFIGURATION
-# =============================================================================
-
-def get_secret(section: str, key: str, default: str = "") -> str:
-    """Safely get secret from Streamlit secrets."""
-    try:
-        return st.secrets.get(section, {}).get(key, default)
-    except Exception:
-        return default
-
-def is_demo_mode() -> bool:
-    """Check if running in demo mode."""
-    try:
-        return st.secrets.get("app", {}).get("demo_mode", True)
-    except Exception:
-        return True
-
-def get_aws_credentials():
-    """Get AWS credentials from secrets."""
-    try:
-        return {
-            "aws_access_key_id": st.secrets.get("aws", {}).get("access_key_id", ""),
-            "aws_secret_access_key": st.secrets.get("aws", {}).get("secret_access_key", ""),
-            "region_name": st.secrets.get("aws", {}).get("region", "us-east-1"),
-        }
-    except Exception:
-        return {"aws_access_key_id": "", "aws_secret_access_key": "", "region_name": "us-east-1"}
-
-
-# =============================================================================
-# PAGE CONFIGURATION
+# PAGE CONFIG
 # =============================================================================
 
 st.set_page_config(
-    page_title="BOMOCO | Self-Driving Cloud",
+    page_title="BOMOCO | Cloud Optimizer",
     page_icon="🌍",
     layout="wide",
-    initial_sidebar_state="expanded",
-    menu_items={
-        'Get Help': 'https://github.com/your-repo/bomoco',
-        'Report a bug': 'https://github.com/your-repo/bomoco/issues',
-        'About': '''
-        ## BOMOCO
-        Business-Outcome-Aware Multi-Objective Cloud Optimizer
-        
-        **Patent Pending** - A revolutionary cloud optimization platform.
-        '''
-    }
+    initial_sidebar_state="expanded"
 )
 
 # =============================================================================
-# CUSTOM STYLING
+# PROFESSIONAL STYLING - HIGH CONTRAST & VISIBILITY
 # =============================================================================
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    /* Import Fonts */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
     
-    .main { background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%); }
-    .stApp { background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%); }
-    h1, h2, h3 { font-family: 'Space Grotesk', sans-serif !important; font-weight: 600 !important; }
+    /* Global Styles */
+    .stApp {
+        background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+    }
     
-    .hero-title {
-        font-size: 3rem;
+    html, body, [class*="css"] {
+        font-family: 'Inter', sans-serif;
+    }
+    
+    /* Force all text to be visible */
+    p, span, label, div {
+        color: #e2e8f0 !important;
+    }
+    
+    h1, h2, h3, h4, h5, h6 {
+        color: #f8fafc !important;
+        font-family: 'Inter', sans-serif !important;
+    }
+    
+    /* Sidebar */
+    section[data-testid="stSidebar"] {
+        background: #1e293b !important;
+        border-right: 1px solid #334155;
+    }
+    
+    section[data-testid="stSidebar"] * {
+        color: #e2e8f0 !important;
+    }
+    
+    section[data-testid="stSidebar"] h3 {
+        color: #f8fafc !important;
+        font-size: 1rem !important;
+        font-weight: 600 !important;
+        border-bottom: 1px solid #475569;
+        padding-bottom: 8px;
+        margin-top: 16px;
+    }
+    
+    /* Slider Labels - VERY VISIBLE */
+    section[data-testid="stSidebar"] .stSlider label p {
+        color: #f8fafc !important;
+        font-weight: 500 !important;
+        font-size: 0.9rem !important;
+    }
+    
+    section[data-testid="stSidebar"] .stSlider [data-testid="stTickBarMin"],
+    section[data-testid="stSidebar"] .stSlider [data-testid="stTickBarMax"] {
+        color: #94a3b8 !important;
+    }
+    
+    /* Metrics - HIGH CONTRAST */
+    [data-testid="stMetricValue"] {
+        color: #f8fafc !important;
+        font-family: 'JetBrains Mono', monospace !important;
+        font-size: 1.75rem !important;
+        font-weight: 700 !important;
+    }
+    
+    [data-testid="stMetricLabel"] {
+        color: #94a3b8 !important;
+        font-size: 0.8rem !important;
+        font-weight: 500 !important;
+        text-transform: uppercase !important;
+    }
+    
+    [data-testid="stMetricDelta"] {
+        font-weight: 600 !important;
+    }
+    
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        background: #1e293b;
+        padding: 8px;
+        border-radius: 10px;
+        gap: 4px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        color: #94a3b8 !important;
+        font-weight: 500;
+        border-radius: 6px;
+        padding: 10px 16px;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background: #7c3aed !important;
+        color: #ffffff !important;
+    }
+    
+    .stTabs [data-baseweb="tab"]:hover {
+        color: #f8fafc !important;
+        background: #334155;
+    }
+    
+    /* Buttons */
+    .stButton > button {
+        background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%) !important;
+        color: white !important;
+        font-weight: 600 !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 0.5rem 1rem !important;
+    }
+    
+    .stButton > button:hover {
+        background: linear-gradient(135deg, #8b5cf6 0%, #818cf8 100%) !important;
+        box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4) !important;
+    }
+    
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    }
+    
+    /* Select boxes */
+    .stSelectbox > div > div {
+        background: #334155 !important;
+        border-color: #475569 !important;
+        color: #f8fafc !important;
+    }
+    
+    .stSelectbox label p {
+        color: #e2e8f0 !important;
+    }
+    
+    .stMultiSelect > div > div {
+        background: #334155 !important;
+        border-color: #475569 !important;
+    }
+    
+    /* Expanders */
+    .streamlit-expanderHeader {
+        background: #334155 !important;
+        color: #f8fafc !important;
+        border-radius: 8px !important;
+        font-weight: 500 !important;
+    }
+    
+    .streamlit-expanderContent {
+        background: #1e293b !important;
+        border: 1px solid #475569 !important;
+        border-top: none !important;
+    }
+    
+    /* Info boxes */
+    .stAlert {
+        background: #334155 !important;
+        color: #e2e8f0 !important;
+        border: 1px solid #475569 !important;
+    }
+    
+    /* DataFrames */
+    .stDataFrame {
+        border: 1px solid #475569 !important;
+        border-radius: 8px !important;
+    }
+    
+    /* Custom Classes */
+    .main-title {
+        font-size: 2.5rem;
         font-weight: 700;
-        background: linear-gradient(135deg, #00d4ff 0%, #7c3aed 50%, #f472b6 100%);
+        background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #f472b6 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        margin-bottom: 0.5rem;
+        margin-bottom: 4px;
     }
     
-    .hero-subtitle { font-size: 1.2rem; color: #94a3b8; margin-bottom: 2rem; }
+    .subtitle {
+        color: #94a3b8 !important;
+        font-size: 1rem;
+        margin-bottom: 24px;
+    }
     
-    .demo-badge {
+    .badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 16px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .badge-demo {
         background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
-        color: white; padding: 4px 12px; border-radius: 20px;
-        font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+        color: white !important;
     }
     
-    .live-badge {
+    .badge-live {
         background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        color: white; padding: 4px 12px; border-radius: 20px;
-        font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+        color: white !important;
     }
     
-    div[data-testid="stMetricValue"] { font-family: 'JetBrains Mono', monospace; font-size: 1.8rem; }
-    .stSlider > div > div { background: linear-gradient(90deg, #10b981, #f59e0b, #ef4444); }
+    .card {
+        background: #334155;
+        border-radius: 12px;
+        padding: 16px;
+        border: 1px solid #475569;
+    }
+    
+    .card h4 {
+        color: #f8fafc !important;
+        margin: 0 0 12px 0;
+        font-size: 1rem;
+    }
+    
+    .card p {
+        color: #cbd5e1 !important;
+        margin: 4px 0;
+        font-size: 0.9rem;
+    }
+    
+    .section-title {
+        color: #f8fafc !important;
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 16px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #7c3aed;
+    }
+    
+    .weight-display {
+        display: flex;
+        align-items: center;
+        margin: 6px 0;
+        gap: 8px;
+    }
+    
+    .weight-label {
+        width: 80px;
+        color: #94a3b8 !important;
+        font-size: 0.8rem;
+    }
+    
+    .weight-bar-bg {
+        flex: 1;
+        height: 6px;
+        background: #1e293b;
+        border-radius: 3px;
+    }
+    
+    .weight-bar-fill {
+        height: 100%;
+        border-radius: 3px;
+    }
+    
+    .weight-value {
+        width: 40px;
+        text-align: right;
+        color: #f8fafc !important;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
 </style>
 """, unsafe_allow_html=True)
-
 
 # =============================================================================
 # SESSION STATE
@@ -146,76 +317,40 @@ if 'recommendations' not in st.session_state:
 if 'ai_assistant' not in st.session_state and CLAUDE_AVAILABLE:
     st.session_state.ai_assistant = ClaudeCloudAssistant()
 
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
 
-# =============================================================================
-# CACHED DATA FUNCTIONS
-# =============================================================================
+def is_demo_mode():
+    try:
+        return st.secrets.get("app", {}).get("demo_mode", True)
+    except:
+        return True
 
 @st.cache_data(ttl=300)
-def cached_business_metrics(days: int = 30):
-    """Cache business metrics generation."""
+def get_business_metrics(days=30):
     return generate_business_metrics(days)
-
-@st.cache_data(ttl=300)
-def cached_carbon_forecast(hours: int, region: str):
-    """Cache carbon intensity forecast."""
-    return generate_carbon_intensity_forecast(hours, region)
-
-@st.cache_data(ttl=300)
-def cached_cost_forecast(hours: int, region: str):
-    """Cache cost forecast."""
-    return generate_cost_forecast(hours, region)
-
-@st.cache_data(ttl=60)
-def cached_sustainability_metrics(workloads_hash: str, workloads):
-    """Cache sustainability metrics calculation."""
-    return calculate_sustainability_metrics(workloads)
-
 
 # =============================================================================
 # COMPONENTS
 # =============================================================================
 
 def render_header():
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.markdown('<h1 class="hero-title">BOMOCO</h1>', unsafe_allow_html=True)
-        st.markdown('<p class="hero-subtitle">Business-Outcome-Aware Multi-Objective Cloud Optimizer</p>', unsafe_allow_html=True)
-    with col2:
-        demo_mode = is_demo_mode()
-        badge = "demo-badge" if demo_mode else "live-badge"
-        text = "DEMO MODE" if demo_mode else "LIVE DATA"
+    c1, c2 = st.columns([3, 1])
+    with c1:
+        st.markdown('<h1 class="main-title">BOMOCO</h1>', unsafe_allow_html=True)
+        st.markdown('<p class="subtitle">Business-Outcome-Aware Multi-Objective Cloud Optimizer</p>', unsafe_allow_html=True)
+    with c2:
+        demo = is_demo_mode()
+        badge = "badge-demo" if demo else "badge-live"
+        text = "DEMO MODE" if demo else "LIVE DATA"
         st.markdown(f'''
-        <div style="text-align: right; padding-top: 20px;">
-            <span class="{badge}">{text}</span><br>
-            <span style="color: #10b981; font-size: 0.9rem; margin-top: 8px; display: block;">● System Active</span>
-            <span style="color: #64748b; font-size: 0.8rem;">{datetime.now().strftime('%Y-%m-%d %H:%M')}</span>
+        <div style="text-align:right;padding-top:8px;">
+            <span class="badge {badge}">{text}</span>
+            <p style="color:#10b981;font-size:0.85rem;margin:8px 0 4px 0;">● System Active</p>
+            <p style="color:#64748b;font-size:0.8rem;margin:0;">{datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
         </div>
         ''', unsafe_allow_html=True)
-
-
-def render_kpi_metrics(workloads, business_metrics):
-    sustainability = calculate_sustainability_metrics(workloads)
-    col1, col2, col3, col4, col5 = st.columns(5)
-    
-    with col1:
-        st.metric("Monthly Cloud Spend", f"${sustainability['total_monthly_cost']:,.0f}",
-                  f"-{sustainability['rightsizing_opportunity_percent']:.0f}% opportunity", delta_color="inverse")
-    with col2:
-        st.metric("Carbon Footprint", f"{sustainability['total_monthly_carbon_kg']:,.0f} kg",
-                  f"-{sustainability['carbon_shift_opportunity_percent']:.0f}% potential", delta_color="inverse")
-    with col3:
-        st.metric("Water Usage", f"{sustainability['total_monthly_water_liters']/1000:,.0f} kL",
-                  "-12% vs benchmark", delta_color="inverse")
-    with col4:
-        if not business_metrics.empty:
-            rev = business_metrics.iloc[-1]['daily_revenue']
-            prev = business_metrics.iloc[-2]['daily_revenue'] if len(business_metrics) > 1 else rev
-            st.metric("Daily Revenue", f"${rev:,.0f}", f"{((rev-prev)/prev)*100:+.1f}%")
-    with col5:
-        if not business_metrics.empty:
-            st.metric("Conversion Rate", f"{business_metrics.iloc[-1]['conversion_rate']:.2f}%", "+0.3%")
-
 
 def render_sidebar():
     st.sidebar.markdown("### ⚙️ Optimization Weights")
@@ -228,41 +363,66 @@ def render_sidebar():
     
     total = cost_w + carbon_w + water_w + perf_w + biz_w
     if total > 0:
-        st.session_state.optimizer.set_weights({
+        norm = {
             "cost": cost_w/total, "carbon": carbon_w/total, "water": water_w/total,
-            "performance": perf_w/total, "business_kpi": biz_w/total,
-        })
+            "performance": perf_w/total, "business_kpi": biz_w/total
+        }
+        st.session_state.optimizer.set_weights(norm)
+        
+        st.sidebar.markdown("---")
+        st.sidebar.markdown("**Normalized Weights:**")
+        
+        colors = {"cost": "#10b981", "carbon": "#22c55e", "water": "#0ea5e9", "performance": "#f59e0b", "business_kpi": "#a78bfa"}
+        labels = {"cost": "Cost", "carbon": "Carbon", "water": "Water", "performance": "Perf", "business_kpi": "Business"}
+        
+        for k, v in norm.items():
+            st.sidebar.markdown(f'''
+            <div class="weight-display">
+                <span class="weight-label">{labels[k]}</span>
+                <div class="weight-bar-bg"><div class="weight-bar-fill" style="width:{v*100}%;background:{colors[k]};"></div></div>
+                <span class="weight-value">{v:.0%}</span>
+            </div>
+            ''', unsafe_allow_html=True)
     
     st.sidebar.markdown("---")
-    st.sidebar.markdown("### 🎯 Quick Actions")
+    st.sidebar.markdown("### 🎯 Actions")
     
     if st.sidebar.button("🔄 Refresh Data", use_container_width=True):
         st.session_state.workloads = generate_workload_data(50)
+        st.cache_data.clear()
         st.rerun()
     
     if st.sidebar.button("⚡ Run Optimization", use_container_width=True, type="primary"):
         with st.spinner("Analyzing..."):
-            carbon_f = generate_carbon_intensity_forecast(48, "us-east-1")
-            cost_f = generate_cost_forecast(24, "us-east-1")
-            recs = st.session_state.optimizer.generate_recommendations(
-                st.session_state.workloads, carbon_f, cost_f, 20)
+            cf = generate_carbon_intensity_forecast(48, "us-east-1")
+            costf = generate_cost_forecast(24, "us-east-1")
+            recs = st.session_state.optimizer.generate_recommendations(st.session_state.workloads, cf, costf, 20)
             st.session_state.recommendations = recs
-        st.success(f"Generated {len(recs)} recommendations!")
+        st.success(f"✅ {len(recs)} recommendations generated!")
         st.rerun()
     
     st.sidebar.markdown("---")
     if is_demo_mode():
-        st.sidebar.info("📊 Running with simulated data.\n\nConfigure secrets for live AWS/carbon data.")
+        st.sidebar.info("📊 Running with simulated data")
     
     st.sidebar.markdown("---")
-    st.sidebar.markdown("""
-    <div style="text-align:center;color:#64748b;font-size:0.8rem;">
-        BOMOCO v0.1.0 | Patent Pending
-    </div>
-    """, unsafe_allow_html=True)
+    st.sidebar.markdown('<p style="text-align:center;color:#64748b;font-size:0.75rem;">BOMOCO v1.0 | Patent Pending</p>', unsafe_allow_html=True)
 
+def render_kpis(workloads, biz_metrics):
+    metrics = calculate_sustainability_metrics(workloads)
+    c1, c2, c3, c4, c5 = st.columns(5)
+    
+    c1.metric("Monthly Spend", f"${metrics['total_monthly_cost']:,.0f}", f"-{metrics['rightsizing_opportunity_percent']:.0f}% opportunity", delta_color="inverse")
+    c2.metric("Carbon Footprint", f"{metrics['total_monthly_carbon_kg']:,.0f} kg", f"-{metrics['carbon_shift_opportunity_percent']:.0f}% potential", delta_color="inverse")
+    c3.metric("Water Usage", f"{metrics['total_monthly_water_liters']/1000:,.0f} kL", "-12% vs benchmark", delta_color="inverse")
+    
+    if not biz_metrics.empty:
+        rev = biz_metrics.iloc[-1]['daily_revenue']
+        prev = biz_metrics.iloc[-2]['daily_revenue'] if len(biz_metrics) > 1 else rev
+        c4.metric("Daily Revenue", f"${rev:,.0f}", f"{((rev-prev)/prev)*100:+.1f}%")
+        c5.metric("Conversion Rate", f"{biz_metrics.iloc[-1]['conversion_rate']:.2f}%", "+0.3%")
 
-def render_carbon_map(workloads):
+def render_map(workloads):
     data = []
     for region, info in AWS_REGIONS.items():
         grid = info["grid"]
@@ -274,99 +434,112 @@ def render_carbon_map(workloads):
     
     df = pd.DataFrame(data)
     fig = px.scatter_geo(df, lat="lat", lon="lon", size="workload_count", color="carbon_intensity",
-                        hover_name="name", color_continuous_scale=["#10b981", "#f59e0b", "#ef4444"],
-                        size_max=40, title="Global Carbon Intensity & Workload Distribution")
+                        hover_name="name", color_continuous_scale=["#10b981", "#f59e0b", "#ef4444"], size_max=40)
     fig.update_layout(
-        geo=dict(showland=True, landcolor="#1a1a2e", showocean=True, oceancolor="#0a0a0f",
-                showcountries=True, countrycolor="#2d3748", bgcolor="rgba(0,0,0,0)"),
+        title=dict(text="Global Carbon Intensity & Workload Distribution", font=dict(color="#f8fafc", size=14)),
+        geo=dict(showland=True, landcolor="#1e293b", showocean=True, oceancolor="#0f172a",
+                showcountries=True, countrycolor="#475569", bgcolor="rgba(0,0,0,0)"),
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="#e2e8f0"), height=400, margin=dict(l=0, r=0, t=40, b=0))
+        font=dict(color="#e2e8f0"), height=400, margin=dict(l=0, r=0, t=40, b=0),
+        coloraxis_colorbar=dict(title="gCO₂/kWh", tickfont=dict(color="#e2e8f0"), titlefont=dict(color="#e2e8f0")))
     st.plotly_chart(fig, use_container_width=True)
 
-
-def render_carbon_forecast(region):
+def render_forecast(region):
     forecast = generate_carbon_intensity_forecast(48, region)
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=forecast["timestamp"], y=forecast["carbon_intensity_gco2_kwh"],
-                            mode="lines", line=dict(color="#10b981", width=2),
-                            fill="tozeroy", fillcolor="rgba(16, 185, 129, 0.1)"))
-    fig.update_layout(title=f"48-Hour Carbon Forecast - {region}", xaxis_title="Time", yaxis_title="gCO₂/kWh",
-                     paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                     font=dict(color="#e2e8f0"), height=300)
+                            mode="lines", line=dict(color="#10b981", width=2), fill="tozeroy", fillcolor="rgba(16,185,129,0.15)"))
+    fig.update_layout(
+        title=dict(text=f"48-Hour Carbon Forecast - {region}", font=dict(color="#f8fafc", size=14)),
+        xaxis=dict(gridcolor="rgba(71,85,105,0.5)", tickfont=dict(color="#94a3b8")),
+        yaxis=dict(gridcolor="rgba(71,85,105,0.5)", tickfont=dict(color="#94a3b8"), title="gCO₂/kWh"),
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#e2e8f0"), height=280, margin=dict(l=50, r=20, t=40, b=40))
     st.plotly_chart(fig, use_container_width=True)
-
 
 def render_pareto(recs):
     if not recs:
-        st.info("🎯 Click 'Run Optimization' to see trade-off analysis")
+        st.info("🎯 Click **Run Optimization** to see trade-off analysis")
         return
     
     cost_imp = [-r.cost_impact for r in recs]
     carbon_imp = [-r.carbon_impact for r in recs]
     colors = {"rightsize_down": "#10b981", "spot_conversion": "#0ea5e9", "carbon_shift": "#22c55e",
-             "region_migration": "#8b5cf6", "rightsize_up": "#f59e0b"}
+             "region_migration": "#a78bfa", "rightsize_up": "#f59e0b"}
     c = [colors.get(r.action_type, "#64748b") for r in recs]
     
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=cost_imp, y=carbon_imp, mode="markers",
-                            marker=dict(size=12, color=c, line=dict(width=2, color="white")),
+                            marker=dict(size=14, color=c, line=dict(width=2, color="white")),
                             text=[r.description[:40] for r in recs],
                             hovertemplate="<b>%{text}</b><br>Cost: %{x:.1f}%<br>Carbon: %{y:.1f}%<extra></extra>"))
-    fig.update_layout(title="Cost vs Carbon Trade-offs", xaxis_title="Cost Savings (%)", yaxis_title="Carbon Reduction (%)",
-                     paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#e2e8f0"), height=400)
+    fig.update_layout(
+        title=dict(text="Cost vs Carbon Trade-offs", font=dict(color="#f8fafc", size=14)),
+        xaxis=dict(title="Cost Savings (%)", gridcolor="rgba(71,85,105,0.5)", tickfont=dict(color="#94a3b8"), titlefont=dict(color="#e2e8f0")),
+        yaxis=dict(title="Carbon Reduction (%)", gridcolor="rgba(71,85,105,0.5)", tickfont=dict(color="#94a3b8"), titlefont=dict(color="#e2e8f0")),
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#e2e8f0"), height=400, margin=dict(l=60, r=20, t=40, b=40))
     st.plotly_chart(fig, use_container_width=True)
-
 
 def render_recommendations(recs):
     if not recs:
-        st.info("🎯 Click 'Run Optimization' to generate recommendations")
+        st.info("🎯 Click **Run Optimization** to generate recommendations")
         return
     
     impact = st.session_state.optimizer.estimate_total_impact(recs)
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Total Savings", f"${impact['total_monthly_savings']:,.0f}/mo")
-    col2.metric("Cost Reduction", f"{impact['total_cost_reduction_percent']:.1f}%")
-    col3.metric("Carbon Reduction", f"{impact['total_carbon_reduction_percent']:.1f}%")
-    col4.metric("Avg Confidence", f"{impact['avg_confidence']*100:.0f}%")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Monthly Savings", f"${impact['total_monthly_savings']:,.0f}")
+    c2.metric("Cost Reduction", f"{impact['total_cost_reduction_percent']:.1f}%")
+    c3.metric("Carbon Reduction", f"{impact['total_carbon_reduction_percent']:.1f}%")
+    c4.metric("Avg Confidence", f"{impact['avg_confidence']*100:.0f}%")
     
     st.markdown("---")
+    
     for i, r in enumerate(recs[:10]):
-        with st.expander(f"**{i+1}. {r.action_type.replace('_',' ').title()}** | Score: {r.composite_score:.3f} | ${r.estimated_savings_monthly:,.0f}/mo", expanded=(i<3)):
-            c1, c2 = st.columns([2,1])
-            with c1:
+        risk_colors = {"low": "#10b981", "medium": "#f59e0b", "high": "#ef4444"}
+        with st.expander(f"**{i+1}. {r.action_type.replace('_',' ').title()}** — ${r.estimated_savings_monthly:,.0f}/mo — Score: {r.composite_score:.3f}", expanded=(i<3)):
+            col1, col2 = st.columns([2, 1])
+            with col1:
                 st.markdown(f"**{r.description}**")
                 st.markdown(f"Workload: `{r.workload_id}`")
-                for lbl, val in [("💰 Cost", r.cost_impact), ("🌱 Carbon", r.carbon_impact), ("⚡ Perf", r.performance_impact)]:
-                    color = "#10b981" if val < 0 else "#ef4444"
-                    st.markdown(f'<span style="color:{color}">{lbl}: {val:+.1f}%</span>', unsafe_allow_html=True)
-            with c2:
-                st.markdown(f"**Confidence:** {r.confidence:.0%}")
-                st.markdown(f"**Risk:** {r.risk_level}")
-                st.markdown(f"**Effort:** {r.implementation_effort}")
+                
+                impacts = f"💰 Cost: {r.cost_impact:+.1f}% | 🌱 Carbon: {r.carbon_impact:+.1f}% | ⚡ Perf: {r.performance_impact:+.1f}%"
+                st.markdown(impacts)
+            
+            with col2:
+                st.markdown(f"""
+                <div class="card">
+                    <p><strong>Confidence:</strong> {r.confidence:.0%}</p>
+                    <p><strong>Risk:</strong> <span style="color:{risk_colors.get(r.risk_level,'#94a3b8')}">{r.risk_level.upper()}</span></p>
+                    <p><strong>Effort:</strong> {r.implementation_effort.title()}</p>
+                </div>
+                """, unsafe_allow_html=True)
 
-
-def render_business_correlation(biz_metrics, opt_history):
+def render_business_intel(biz_metrics, opt_history):
     if biz_metrics.empty:
         return
     
     fig = make_subplots(specs=[[{"secondary_y": True}]])
-    fig.add_trace(go.Scatter(x=biz_metrics["date"], y=biz_metrics["daily_revenue"],
-                            name="Revenue", line=dict(color="#8b5cf6", width=2)), secondary_y=False)
-    fig.add_trace(go.Scatter(x=biz_metrics["date"], y=biz_metrics["infrastructure_health_score"],
-                            name="Infra Health", line=dict(color="#10b981", width=2, dash="dot")), secondary_y=True)
-    fig.update_layout(title="Business KPI Correlation", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                     font=dict(color="#e2e8f0"), height=350)
+    fig.add_trace(go.Scatter(x=biz_metrics["date"], y=biz_metrics["daily_revenue"], name="Revenue", line=dict(color="#a78bfa", width=2)), secondary_y=False)
+    fig.add_trace(go.Scatter(x=biz_metrics["date"], y=biz_metrics["infrastructure_health_score"], name="Infra Health", line=dict(color="#10b981", width=2, dash="dot")), secondary_y=True)
+    fig.update_layout(
+        title=dict(text="Business KPI Correlation", font=dict(color="#f8fafc", size=14)),
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#e2e8f0"), height=320,
+        xaxis=dict(gridcolor="rgba(71,85,105,0.5)", tickfont=dict(color="#94a3b8")),
+        yaxis=dict(gridcolor="rgba(71,85,105,0.5)", tickfont=dict(color="#94a3b8"), title="Revenue ($)"),
+        yaxis2=dict(tickfont=dict(color="#94a3b8"), title="Health %"),
+        legend=dict(font=dict(color="#e2e8f0")), margin=dict(l=60, r=60, t=40, b=40))
     st.plotly_chart(fig, use_container_width=True)
     
     correlator = BusinessKPICorrelator()
     corr = correlator.analyze_correlations(opt_history, biz_metrics)
     
-    st.markdown("**Learned Correlations (Patent Innovation):**")
+    st.markdown("**Learned Correlations** *(Patent-Pending)*")
     c1, c2, c3 = st.columns(3)
-    c1.markdown(f'<div style="text-align:center;padding:12px;background:rgba(139,92,246,0.1);border-radius:8px;"><div style="font-size:1.5rem;color:#8b5cf6;">{corr["performance_to_revenue"]:.0%}</div><div style="color:#94a3b8;">Performance → Revenue</div></div>', unsafe_allow_html=True)
-    c2.markdown(f'<div style="text-align:center;padding:12px;background:rgba(239,68,68,0.1);border-radius:8px;"><div style="font-size:1.5rem;color:#ef4444;">{corr["latency_to_conversions"]:.0%}</div><div style="color:#94a3b8;">Latency → Conversions</div></div>', unsafe_allow_html=True)
-    c3.markdown(f'<div style="text-align:center;padding:12px;background:rgba(34,197,94,0.1);border-radius:8px;"><div style="font-size:1.5rem;color:#22c55e;">{corr["carbon_to_brand"]:.0%}</div><div style="color:#94a3b8;">Sustainability → Brand</div></div>', unsafe_allow_html=True)
-
+    c1.markdown(f'<div class="card" style="text-align:center;"><p style="font-size:1.8rem;font-weight:700;color:#a78bfa!important;margin:0;">{corr["performance_to_revenue"]:.0%}</p><p style="color:#94a3b8!important;margin:4px 0 0 0;">Performance → Revenue</p></div>', unsafe_allow_html=True)
+    c2.markdown(f'<div class="card" style="text-align:center;"><p style="font-size:1.8rem;font-weight:700;color:#ef4444!important;margin:0;">{corr["latency_to_conversions"]:.0%}</p><p style="color:#94a3b8!important;margin:4px 0 0 0;">Latency → Conversions</p></div>', unsafe_allow_html=True)
+    c3.markdown(f'<div class="card" style="text-align:center;"><p style="font-size:1.8rem;font-weight:700;color:#22c55e!important;margin:0;">{corr["carbon_to_brand"]:.0%}</p><p style="color:#94a3b8!important;margin:4px 0 0 0;">Sustainability → Brand</p></div>', unsafe_allow_html=True)
 
 # =============================================================================
 # MAIN
@@ -376,61 +549,53 @@ def main():
     render_header()
     render_sidebar()
     
-    biz_metrics = generate_business_metrics(30)
+    biz_metrics = get_business_metrics(30)
     opt_history = generate_optimization_history(20)
     
-    render_kpi_metrics(st.session_state.workloads, biz_metrics)
-    st.markdown("---")
+    render_kpis(st.session_state.workloads, biz_metrics)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
     
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["🌍 Sustainability", "📊 Recommendations", "🤖 AI Assistant", "📈 Business Intel", "🔮 Forecasts", "📋 Inventory"])
     
     with tab1:
         c1, c2 = st.columns([2, 1])
         with c1:
-            render_carbon_map(st.session_state.workloads)
+            render_map(st.session_state.workloads)
         with c2:
             region = st.selectbox("Region", list(AWS_REGIONS.keys()), format_func=lambda x: f"{AWS_REGIONS[x]['name']} ({x})")
             wl = st.session_state.workloads[st.session_state.workloads["region"] == region]
             grid = AWS_REGIONS[region]["grid"]
             st.markdown(f'''
-            <div style="background:rgba(255,255,255,0.05);padding:16px;border-radius:8px;">
+            <div class="card">
                 <h4>{AWS_REGIONS[region]['name']}</h4>
-                <p>Grid: {grid} | Carbon: {GRID_CARBON_BASELINE.get(grid, 400)} gCO₂/kWh</p>
-                <p>Workloads: {len(wl)} | Cost: ${wl["monthly_cost"].sum():,.0f}/mo</p>
+                <p><strong>Grid:</strong> {grid}</p>
+                <p><strong>Carbon:</strong> {GRID_CARBON_BASELINE.get(grid, 400)} gCO₂/kWh</p>
+                <p><strong>Workloads:</strong> {len(wl)}</p>
+                <p><strong>Cost:</strong> ${wl["monthly_cost"].sum():,.0f}/mo</p>
             </div>
             ''', unsafe_allow_html=True)
-        render_carbon_forecast(region)
+        render_forecast(region)
     
     with tab2:
         c1, c2 = st.columns(2)
         with c1:
-            st.markdown("### 🎯 Recommendations")
+            st.markdown('<p class="section-title">🎯 Recommendations</p>', unsafe_allow_html=True)
             render_recommendations(st.session_state.recommendations)
         with c2:
-            st.markdown("### 📊 Trade-offs")
+            st.markdown('<p class="section-title">📊 Trade-offs</p>', unsafe_allow_html=True)
             render_pareto(st.session_state.recommendations)
     
     with tab3:
         if CLAUDE_AVAILABLE:
-            render_ai_chat_interface(
-                st.session_state.ai_assistant,
-                st.session_state.workloads,
-                st.session_state.recommendations
-            )
+            render_ai_chat_interface(st.session_state.ai_assistant, st.session_state.workloads, st.session_state.recommendations)
         else:
-            st.info("🤖 Claude AI integration is loading...")
+            st.markdown('<p class="section-title">🤖 AI-Powered Insights</p>', unsafe_allow_html=True)
+            st.info("Add your Anthropic API key to enable Claude AI features.")
             st.markdown("""
-            ### Enable AI-Powered Insights
-            
-            Add your Anthropic API key to unlock:
-            - **Natural Language Queries** - Ask questions about your infrastructure
-            - **Smart Analysis** - AI explains why optimizations are recommended  
-            - **Executive Reports** - Auto-generate summaries for leadership
-            - **Anomaly Detection** - AI identifies unusual patterns
-            
-            **Setup:**
+            **Enable AI Features:**
             1. Get API key from [console.anthropic.com](https://console.anthropic.com)
-            2. Add to Streamlit secrets:
+            2. Add to **App Settings → Secrets**:
             ```toml
             [anthropic]
             api_key = "sk-ant-..."
@@ -438,26 +603,28 @@ def main():
             """)
     
     with tab4:
-        st.markdown("### 📈 Business KPI Correlation")
-        st.markdown("*Patent-pending innovation: business-aware cloud optimization*")
-        render_business_correlation(biz_metrics, opt_history)
+        st.markdown('<p class="section-title">📈 Business KPI Correlation</p>', unsafe_allow_html=True)
+        render_business_intel(biz_metrics, opt_history)
     
     with tab5:
-        st.markdown("### 🔮 Forecasts")
+        st.markdown('<p class="section-title">🔮 Forecasts</p>', unsafe_allow_html=True)
         c1, c2 = st.columns(2)
         with c1:
             cf = generate_cost_forecast(24, "us-east-1")
             fig = px.line(cf, x="timestamp", y="spot_discount_percentage", title="Spot Discount Forecast")
-            fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#e2e8f0"), height=300)
+            fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#e2e8f0"), height=280,
+                             xaxis=dict(gridcolor="rgba(71,85,105,0.5)"), yaxis=dict(gridcolor="rgba(71,85,105,0.5)"))
+            fig.update_traces(line_color="#3b82f6")
             st.plotly_chart(fig, use_container_width=True)
         with c2:
             forecasts = pd.concat([generate_carbon_intensity_forecast(24, r).assign(region_name=AWS_REGIONS[r]["name"]) for r in ["us-east-1", "us-west-2", "eu-west-1"]])
             fig = px.line(forecasts, x="timestamp", y="carbon_intensity_gco2_kwh", color="region_name", title="Carbon by Region")
-            fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#e2e8f0"), height=300)
+            fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#e2e8f0"), height=280,
+                             xaxis=dict(gridcolor="rgba(71,85,105,0.5)"), yaxis=dict(gridcolor="rgba(71,85,105,0.5)"), legend=dict(font=dict(color="#e2e8f0")))
             st.plotly_chart(fig, use_container_width=True)
     
     with tab6:
-        st.markdown("### 📋 Workload Inventory")
+        st.markdown('<p class="section-title">📋 Workload Inventory</p>', unsafe_allow_html=True)
         c1, c2, c3 = st.columns(3)
         tf = c1.multiselect("Type", st.session_state.workloads["workload_type"].unique())
         rf = c2.multiselect("Region", st.session_state.workloads["region"].unique())
@@ -472,7 +639,6 @@ def main():
         display["cpu_utilization"] = display["cpu_utilization"].apply(lambda x: f"{x*100:.0f}%")
         display["monthly_cost"] = display["monthly_cost"].apply(lambda x: f"${x:,.0f}")
         st.dataframe(display, use_container_width=True, height=400)
-
 
 if __name__ == "__main__":
     main()
