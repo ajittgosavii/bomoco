@@ -1,6 +1,6 @@
 """
 BOMOCO Integrations Module
-Real API integrations for cloud providers, carbon APIs, and business analytics
+Real API integrations for cloud providers, carbon APIs, business analytics, and AI
 """
 
 from .aws_client import (
@@ -31,6 +31,17 @@ from .business_analytics import (
     KPIDefinition,
 )
 
+# Claude AI Integration
+try:
+    from .claude_ai import (
+        ClaudeCloudAssistant,
+        AIInsight,
+        render_ai_chat_interface,
+    )
+    CLAUDE_AI_AVAILABLE = True
+except ImportError:
+    CLAUDE_AI_AVAILABLE = False
+
 __all__ = [
     # AWS
     "AWSCostExplorerClient",
@@ -54,4 +65,9 @@ __all__ = [
     "DatabaseClient",
     "BusinessMetric",
     "KPIDefinition",
+    # AI
+    "ClaudeCloudAssistant",
+    "AIInsight",
+    "render_ai_chat_interface",
+    "CLAUDE_AI_AVAILABLE",
 ]

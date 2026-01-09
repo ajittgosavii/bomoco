@@ -16,5 +16,8 @@ requests>=2.31.0
 # AWS Integration (optional - for live data)
 boto3>=1.28.0
 
+# Claude AI Integration
+anthropic>=0.39.0
+
 # Type Hints
 typing-extensions>=4.8.0
