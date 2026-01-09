@@ -291,6 +291,17 @@ def calculate_sustainability_metrics(workloads_df: pd.DataFrame) -> Dict:
     """Calculate aggregate sustainability metrics from workload data."""
     metrics = {}
     
+    if workloads_df.empty:
+        return {
+            "total_monthly_cost": 0,
+            "total_monthly_carbon_kg": 0,
+            "total_monthly_water_liters": 0,
+            "carbon_intensity_avg": 0,
+            "rightsizing_opportunity_percent": 0,
+            "carbon_shift_opportunity_percent": 0,
+            "spot_opportunity_percent": 0,
+        }
+    
     # Total monthly cost
     metrics["total_monthly_cost"] = workloads_df["monthly_cost"].sum()
     
@@ -299,14 +310,21 @@ def calculate_sustainability_metrics(workloads_df: pd.DataFrame) -> Dict:
     total_water = 0
     
     for _, row in workloads_df.iterrows():
-        region = row["region"]
-        grid = AWS_REGIONS[region]["grid"]
+        region = row.get("region", "us-east-1")
+        
+        # Safely get region info with defaults
+        region_info = AWS_REGIONS.get(region, {"grid": "PJM"})
+        grid = region_info.get("grid", "PJM")
         pue = PUE_VALUES.get(region, 1.2)
         climate = REGION_CLIMATE.get(region, "temperate")
         wue = WUE_FACTORS.get(climate, 1.2)
         
-        # Estimate power consumption (simplified: cost as proxy)
-        power_kwh = row["hourly_cost"] * 10  # Rough estimate
+        # Estimate power consumption - handle missing hourly_cost
+        if "hourly_cost" in row.index and pd.notna(row["hourly_cost"]):
+            power_kwh = row["hourly_cost"] * 10
+        else:
+            # Fallback: estimate from monthly cost
+            power_kwh = (row.get("monthly_cost", 100) / 730) * 10
         
         carbon_intensity = GRID_CARBON_BASELINE.get(grid, 400)
         carbon_kg = (power_kwh * pue * carbon_intensity) / 1000  # kg CO2 per hour
@@ -320,7 +338,11 @@ def calculate_sustainability_metrics(workloads_df: pd.DataFrame) -> Dict:
     metrics["carbon_intensity_avg"] = total_carbon / metrics["total_monthly_cost"] if metrics["total_monthly_cost"] > 0 else 0
     
     # Optimization opportunity estimates
-    avg_util = workloads_df["cpu_utilization"].mean()
+    if "cpu_utilization" in workloads_df.columns:
+        avg_util = workloads_df["cpu_utilization"].mean()
+    else:
+        avg_util = 0.5  # Default assumption
+    
     metrics["rightsizing_opportunity_percent"] = max(0, (1 - avg_util) * 40)
     metrics["carbon_shift_opportunity_percent"] = 15  # Estimated from carbon variance
     metrics["spot_opportunity_percent"] = 25  # Based on deferability scores
