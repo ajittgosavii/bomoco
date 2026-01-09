@@ -29,6 +29,17 @@ try:
 except ImportError:
     CLAUDE_AVAILABLE = False
 
+# Import real-time carbon data integration
+try:
+    from integrations.realtime_data import (
+        get_carbon_for_region, get_carbon_for_all_regions,
+        get_api_status, render_carbon_api_status, get_carbon_source_badge,
+        REGIONAL_CARBON_ESTIMATES
+    )
+    REALTIME_CARBON_AVAILABLE = True
+except ImportError:
+    REALTIME_CARBON_AVAILABLE = False
+
 # =============================================================================
 # CONNECTION STATUS FUNCTIONS
 # =============================================================================
@@ -97,6 +108,32 @@ def check_claude_connection():
         else:
             return False, f"Error: {error_msg[:25]}"
 
+def check_carbon_apis():
+    """Check carbon intensity API connections."""
+    if not REALTIME_CARBON_AVAILABLE:
+        return {"watttime": (False, "Module not loaded"), "electricity_maps": (False, "Module not loaded")}
+    
+    status = get_api_status()
+    results = {}
+    
+    # WattTime
+    if status["watttime"]["connected"]:
+        results["watttime"] = (True, "Connected")
+    elif status["watttime"]["configured"]:
+        results["watttime"] = (False, status["watttime"].get("error", "Connection failed")[:25])
+    else:
+        results["watttime"] = (None, "Not configured")
+    
+    # Electricity Maps
+    if status["electricity_maps"]["connected"]:
+        results["electricity_maps"] = (True, "Connected")
+    elif status["electricity_maps"]["configured"]:
+        results["electricity_maps"] = (False, status["electricity_maps"].get("error", "Connection failed")[:25])
+    else:
+        results["electricity_maps"] = (None, "Not configured")
+    
+    return results
+
 def render_connection_status():
     """Render connection status indicators in sidebar."""
     st.sidebar.markdown("### 🔌 Connections")
@@ -164,6 +201,47 @@ def render_connection_status():
                 <span style="color:#94a3b8;font-size:1.2rem;">○</span>
                 <span style="color:#94a3b8;font-weight:600;font-size:0.8rem;"> Claude</span>
                 <p style="color:#64748b;font-size:0.7rem;margin:4px 0 0 0;">Not checked</p>
+            </div>
+            ''', unsafe_allow_html=True)
+    
+    # Carbon APIs Status (collapsible)
+    if REALTIME_CARBON_AVAILABLE:
+        with st.sidebar.expander("🌱 Carbon APIs", expanded=False):
+            carbon_status = check_carbon_apis()
+            
+            for api_name, (connected, msg) in carbon_status.items():
+                display_name = "WattTime" if api_name == "watttime" else "Electricity Maps"
+                if connected is True:
+                    st.markdown(f'''
+                    <div style="background:#064e3b;border:1px solid #10b981;border-radius:6px;padding:6px;margin:4px 0;">
+                        <span style="color:#10b981;">●</span>
+                        <span style="color:#10b981;font-size:0.8rem;"> {display_name}</span>
+                        <span style="color:#6ee7b7;font-size:0.7rem;float:right;">{msg}</span>
+                    </div>
+                    ''', unsafe_allow_html=True)
+                elif connected is False:
+                    st.markdown(f'''
+                    <div style="background:#450a0a;border:1px solid #ef4444;border-radius:6px;padding:6px;margin:4px 0;">
+                        <span style="color:#ef4444;">●</span>
+                        <span style="color:#ef4444;font-size:0.8rem;"> {display_name}</span>
+                        <span style="color:#fca5a5;font-size:0.7rem;float:right;">{msg}</span>
+                    </div>
+                    ''', unsafe_allow_html=True)
+                else:
+                    st.markdown(f'''
+                    <div style="background:#1e293b;border:1px solid #475569;border-radius:6px;padding:6px;margin:4px 0;">
+                        <span style="color:#94a3b8;">○</span>
+                        <span style="color:#94a3b8;font-size:0.8rem;"> {display_name}</span>
+                        <span style="color:#64748b;font-size:0.7rem;float:right;">{msg}</span>
+                    </div>
+                    ''', unsafe_allow_html=True)
+            
+            # Always show fallback available
+            st.markdown('''
+            <div style="background:#1e3a5f;border:1px solid #3b82f6;border-radius:6px;padding:6px;margin:4px 0;">
+                <span style="color:#3b82f6;">●</span>
+                <span style="color:#3b82f6;font-size:0.8rem;"> Regional Estimates</span>
+                <span style="color:#93c5fd;font-size:0.7rem;float:right;">Always available</span>
             </div>
             ''', unsafe_allow_html=True)
     
@@ -749,17 +827,41 @@ def render_kpis(workloads, biz_metrics):
 
 def render_map(workloads):
     data = []
+    carbon_sources = []
+    
     for region, info in AWS_REGIONS.items():
         grid = info["grid"]
-        carbon = GRID_CARBON_BASELINE.get(grid, 400)
         wl_count = len(workloads[workloads["region"] == region])
         cost = workloads[workloads["region"] == region]["monthly_cost"].sum()
-        data.append({"region": region, "name": info["name"], "lat": info["lat"], "lon": info["lon"],
-                    "carbon_intensity": carbon, "workload_count": wl_count, "monthly_cost": cost, "grid": grid})
+        
+        # Try to get real carbon data, fallback to baseline
+        if REALTIME_CARBON_AVAILABLE:
+            carbon_data = get_carbon_for_region(region)
+            carbon = carbon_data["gco2_kwh"]
+            source = carbon_data["source"]
+        else:
+            carbon = GRID_CARBON_BASELINE.get(grid, 400)
+            source = "Baseline"
+        
+        carbon_sources.append(source)
+        data.append({
+            "region": region, "name": info["name"], "lat": info["lat"], "lon": info["lon"],
+            "carbon_intensity": carbon, "workload_count": wl_count, "monthly_cost": cost, 
+            "grid": grid, "carbon_source": source
+        })
     
     df = pd.DataFrame(data)
+    
+    # Show data source indicator
+    unique_sources = set(carbon_sources)
+    if "WattTime" in unique_sources or "Electricity Maps" in unique_sources:
+        st.caption(f"🌱 Carbon data: {', '.join(unique_sources)} (live + estimates)")
+    else:
+        st.caption("🌱 Carbon data: Regional estimates (configure WattTime/Electricity Maps for live data)")
+    
     fig = px.scatter_geo(df, lat="lat", lon="lon", size="workload_count", color="carbon_intensity",
-                        hover_name="name", color_continuous_scale=["#10b981", "#f59e0b", "#ef4444"], size_max=40)
+                        hover_name="name", color_continuous_scale=["#10b981", "#f59e0b", "#ef4444"], size_max=40,
+                        hover_data={"carbon_source": True, "grid": True})
     fig.update_layout(
         title=dict(text="Global Carbon Intensity & Workload Distribution", font=dict(color="#f8fafc", size=14)),
         geo=dict(showland=True, landcolor="#1e293b", showocean=True, oceancolor="#0f172a",
