@@ -30,6 +30,153 @@ except ImportError:
     CLAUDE_AVAILABLE = False
 
 # =============================================================================
+# CONNECTION STATUS FUNCTIONS
+# =============================================================================
+
+def check_aws_connection():
+    """Test AWS connection using configured credentials."""
+    try:
+        import boto3
+        
+        # Get credentials from secrets
+        aws_key = st.secrets.get("aws", {}).get("access_key_id", "")
+        aws_secret = st.secrets.get("aws", {}).get("access_key", "") or st.secrets.get("aws", {}).get("secret_access_key", "")
+        aws_region = st.secrets.get("aws", {}).get("default_region", "") or st.secrets.get("aws", {}).get("region", "us-east-1")
+        
+        if not aws_key or not aws_secret:
+            return False, "No AWS credentials configured"
+        
+        # Test connection with STS GetCallerIdentity
+        sts = boto3.client(
+            'sts',
+            aws_access_key_id=aws_key,
+            aws_secret_access_key=aws_secret,
+            region_name=aws_region
+        )
+        identity = sts.get_caller_identity()
+        account_id = identity.get('Account', 'Unknown')
+        return True, f"Connected (Account: ...{account_id[-4:]})"
+    except Exception as e:
+        error_msg = str(e)
+        if "InvalidClientTokenId" in error_msg:
+            return False, "Invalid AWS Access Key"
+        elif "SignatureDoesNotMatch" in error_msg:
+            return False, "Invalid AWS Secret Key"
+        elif "credentials" in error_msg.lower():
+            return False, "Credential error"
+        else:
+            return False, f"Error: {error_msg[:30]}"
+
+def check_claude_connection():
+    """Test Claude API connection."""
+    try:
+        import anthropic
+        
+        api_key = st.secrets.get("anthropic", {}).get("api_key", "")
+        
+        if not api_key:
+            return False, "No API key configured"
+        
+        if not api_key.startswith("sk-ant"):
+            return False, "Invalid key format"
+        
+        # Test with a minimal API call
+        client = anthropic.Anthropic(api_key=api_key)
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=10,
+            messages=[{"role": "user", "content": "Hi"}]
+        )
+        return True, "Connected"
+    except Exception as e:
+        error_msg = str(e)
+        if "authentication" in error_msg.lower() or "401" in error_msg:
+            return False, "Invalid API key"
+        elif "rate" in error_msg.lower():
+            return True, "Connected (rate limited)"  # Still connected, just rate limited
+        else:
+            return False, f"Error: {error_msg[:25]}"
+
+def render_connection_status():
+    """Render connection status indicators in sidebar."""
+    st.sidebar.markdown("### 🔌 Connections")
+    
+    # Initialize session state for connection status
+    if 'aws_status' not in st.session_state:
+        st.session_state.aws_status = (None, "Not checked")
+    if 'claude_status' not in st.session_state:
+        st.session_state.claude_status = (None, "Not checked")
+    
+    col1, col2 = st.sidebar.columns(2)
+    
+    # AWS Status
+    with col1:
+        aws_connected, aws_msg = st.session_state.aws_status
+        if aws_connected is True:
+            st.markdown(f'''
+            <div style="background:#064e3b;border:1px solid #10b981;border-radius:8px;padding:8px;text-align:center;">
+                <span style="color:#10b981;font-size:1.2rem;">●</span>
+                <span style="color:#10b981;font-weight:600;font-size:0.8rem;"> AWS</span>
+                <p style="color:#6ee7b7;font-size:0.7rem;margin:4px 0 0 0;">{aws_msg}</p>
+            </div>
+            ''', unsafe_allow_html=True)
+        elif aws_connected is False:
+            st.markdown(f'''
+            <div style="background:#450a0a;border:1px solid #ef4444;border-radius:8px;padding:8px;text-align:center;">
+                <span style="color:#ef4444;font-size:1.2rem;">●</span>
+                <span style="color:#ef4444;font-weight:600;font-size:0.8rem;"> AWS</span>
+                <p style="color:#fca5a5;font-size:0.7rem;margin:4px 0 0 0;">{aws_msg}</p>
+            </div>
+            ''', unsafe_allow_html=True)
+        else:
+            st.markdown('''
+            <div style="background:#1e293b;border:1px solid #475569;border-radius:8px;padding:8px;text-align:center;">
+                <span style="color:#94a3b8;font-size:1.2rem;">○</span>
+                <span style="color:#94a3b8;font-weight:600;font-size:0.8rem;"> AWS</span>
+                <p style="color:#64748b;font-size:0.7rem;margin:4px 0 0 0;">Not checked</p>
+            </div>
+            ''', unsafe_allow_html=True)
+    
+    # Claude Status
+    with col2:
+        claude_connected, claude_msg = st.session_state.claude_status
+        if claude_connected is True:
+            st.markdown(f'''
+            <div style="background:#064e3b;border:1px solid #10b981;border-radius:8px;padding:8px;text-align:center;">
+                <span style="color:#10b981;font-size:1.2rem;">●</span>
+                <span style="color:#10b981;font-weight:600;font-size:0.8rem;"> Claude</span>
+                <p style="color:#6ee7b7;font-size:0.7rem;margin:4px 0 0 0;">{claude_msg}</p>
+            </div>
+            ''', unsafe_allow_html=True)
+        elif claude_connected is False:
+            st.markdown(f'''
+            <div style="background:#450a0a;border:1px solid #ef4444;border-radius:8px;padding:8px;text-align:center;">
+                <span style="color:#ef4444;font-size:1.2rem;">●</span>
+                <span style="color:#ef4444;font-weight:600;font-size:0.8rem;"> Claude</span>
+                <p style="color:#fca5a5;font-size:0.7rem;margin:4px 0 0 0;">{claude_msg}</p>
+            </div>
+            ''', unsafe_allow_html=True)
+        else:
+            st.markdown('''
+            <div style="background:#1e293b;border:1px solid #475569;border-radius:8px;padding:8px;text-align:center;">
+                <span style="color:#94a3b8;font-size:1.2rem;">○</span>
+                <span style="color:#94a3b8;font-weight:600;font-size:0.8rem;"> Claude</span>
+                <p style="color:#64748b;font-size:0.7rem;margin:4px 0 0 0;">Not checked</p>
+            </div>
+            ''', unsafe_allow_html=True)
+    
+    # Test Connection Button
+    if st.sidebar.button("🔄 Test Connections", use_container_width=True):
+        with st.sidebar:
+            with st.spinner("Testing AWS..."):
+                st.session_state.aws_status = check_aws_connection()
+            with st.spinner("Testing Claude..."):
+                st.session_state.claude_status = check_claude_connection()
+        st.rerun()
+    
+    st.sidebar.markdown("---")
+
+# =============================================================================
 # PAGE CONFIG
 # =============================================================================
 
@@ -322,8 +469,17 @@ if 'ai_assistant' not in st.session_state and CLAUDE_AVAILABLE:
 # =============================================================================
 
 def is_demo_mode():
+    """Check if running in demo mode (no live connections)."""
     try:
-        return st.secrets.get("app", {}).get("demo_mode", True)
+        # Check if AWS credentials are configured
+        aws_key = st.secrets.get("aws", {}).get("access_key_id", "")
+        aws_secret = st.secrets.get("aws", {}).get("access_key", "") or st.secrets.get("aws", {}).get("secret_access_key", "")
+        
+        # If we have AWS credentials, we're potentially in live mode
+        if aws_key and aws_secret:
+            return False
+        
+        return True
     except:
         return True
 
@@ -353,6 +509,9 @@ def render_header():
         ''', unsafe_allow_html=True)
 
 def render_sidebar():
+    # Connection Status First
+    render_connection_status()
+    
     st.sidebar.markdown("### ⚙️ Optimization Weights")
     
     cost_w = st.sidebar.slider("💰 Cost", 0.0, 1.0, 0.35, 0.05)
