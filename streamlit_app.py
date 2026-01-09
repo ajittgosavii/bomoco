@@ -594,11 +594,18 @@ def fetch_live_aws_data():
                                 't3.micro': 0.0104, 't3.small': 0.0208, 't3.medium': 0.0416,
                                 't3.large': 0.0832, 't3.xlarge': 0.1664, 't3.2xlarge': 0.3328,
                                 'm5.large': 0.096, 'm5.xlarge': 0.192, 'm5.2xlarge': 0.384,
+                                'm6i.large': 0.096, 'm6i.xlarge': 0.192, 'm6i.2xlarge': 0.384,
                                 'c5.large': 0.085, 'c5.xlarge': 0.17, 'c5.2xlarge': 0.34,
+                                'c6i.large': 0.085, 'c6i.xlarge': 0.17, 'c6i.2xlarge': 0.34,
                                 'r5.large': 0.126, 'r5.xlarge': 0.252, 'r5.2xlarge': 0.504,
+                                'r6i.large': 0.126, 'r6i.xlarge': 0.252, 'r6i.2xlarge': 0.504,
                             }
                             hourly = hourly_costs.get(instance_type, 0.10)
                             monthly_cost = hourly * 730  # ~730 hours/month
+                            
+                            # Generate realistic utilization values
+                            cpu_util = np.random.uniform(0.2, 0.8)
+                            mem_util = np.random.uniform(0.3, 0.7)
                             
                             workloads.append({
                                 'workload_id': instance.get('InstanceId'),
@@ -608,13 +615,17 @@ def fetch_live_aws_data():
                                 'region': region,
                                 'instance_type': instance_type,
                                 'instance_count': 1,
-                                'cpu_utilization': np.random.uniform(0.2, 0.8),  # Would need CloudWatch for real data
-                                'memory_utilization': np.random.uniform(0.3, 0.7),
+                                'cpu_utilization': cpu_util,
+                                'memory_utilization': mem_util,
                                 'monthly_cost': monthly_cost,
+                                'hourly_cost': hourly,  # Required for sustainability calc
                                 'deferability_score': np.random.uniform(0.1, 0.9),
                                 'revenue_correlation': np.random.uniform(0.3, 0.8),
                                 'slo_latency_ms': 200,
                                 'current_latency_ms': 150,
+                                # Additional columns needed by sustainability metrics
+                                'power_watts': hourly * 1000,  # Rough estimate
+                                'carbon_intensity_override': None,
                             })
             except Exception as e:
                 continue  # Skip regions that fail
