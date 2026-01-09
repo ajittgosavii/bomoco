@@ -106,6 +106,8 @@ def render_connection_status():
         st.session_state.aws_status = (None, "Not checked")
     if 'claude_status' not in st.session_state:
         st.session_state.claude_status = (None, "Not checked")
+    if 'data_mode' not in st.session_state:
+        st.session_state.data_mode = "demo"  # Default to demo
     
     col1, col2 = st.sidebar.columns(2)
     
@@ -173,6 +175,54 @@ def render_connection_status():
             with st.spinner("Testing Claude..."):
                 st.session_state.claude_status = check_claude_connection()
         st.rerun()
+    
+    st.sidebar.markdown("---")
+    
+    # Data Mode Toggle
+    st.sidebar.markdown("### 📊 Data Source")
+    
+    aws_connected, _ = st.session_state.aws_status
+    
+    # Radio button for data mode
+    data_mode_options = ["Demo Data", "Live AWS Data"]
+    
+    # Disable Live option if AWS not connected
+    if aws_connected is not True:
+        st.sidebar.radio(
+            "Select data source:",
+            data_mode_options,
+            index=0,
+            key="data_mode_radio",
+            disabled=False,
+            help="Connect to AWS first to enable Live Data mode"
+        )
+        st.session_state.data_mode = "demo"
+        st.sidebar.caption("⚠️ Test AWS connection to enable Live Data")
+    else:
+        selected_mode = st.sidebar.radio(
+            "Select data source:",
+            data_mode_options,
+            index=0 if st.session_state.data_mode == "demo" else 1,
+            key="data_mode_radio",
+            help="Switch between simulated demo data and real AWS data"
+        )
+        st.session_state.data_mode = "demo" if selected_mode == "Demo Data" else "live"
+    
+    # Show current mode indicator
+    if st.session_state.data_mode == "live":
+        st.sidebar.markdown('''
+        <div style="background:#064e3b;border:1px solid #10b981;border-radius:6px;padding:8px;text-align:center;margin-top:8px;">
+            <span style="color:#10b981;font-weight:600;">🟢 LIVE MODE ACTIVE</span>
+            <p style="color:#6ee7b7;font-size:0.75rem;margin:4px 0 0 0;">Fetching real AWS data</p>
+        </div>
+        ''', unsafe_allow_html=True)
+    else:
+        st.sidebar.markdown('''
+        <div style="background:#1e293b;border:1px solid #f59e0b;border-radius:6px;padding:8px;text-align:center;margin-top:8px;">
+            <span style="color:#f59e0b;font-weight:600;">🟡 DEMO MODE</span>
+            <p style="color:#fcd34d;font-size:0.75rem;margin:4px 0 0 0;">Using simulated data</p>
+        </div>
+        ''', unsafe_allow_html=True)
     
     st.sidebar.markdown("---")
 
@@ -456,36 +506,140 @@ st.markdown("""
 # =============================================================================
 
 if 'workloads' not in st.session_state:
-    st.session_state.workloads = generate_workload_data(50)
+    st.session_state.workloads = generate_workload_data(50)  # Start with demo
 if 'optimizer' not in st.session_state:
     st.session_state.optimizer = MultiObjectiveOptimizer()
 if 'recommendations' not in st.session_state:
     st.session_state.recommendations = []
 if 'ai_assistant' not in st.session_state and CLAUDE_AVAILABLE:
     st.session_state.ai_assistant = ClaudeCloudAssistant()
+if 'data_mode' not in st.session_state:
+    st.session_state.data_mode = "demo"
+if 'last_data_mode' not in st.session_state:
+    st.session_state.last_data_mode = "demo"
 
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
 
 def is_demo_mode():
-    """Check if running in demo mode (no live connections)."""
+    """Check if running in demo mode based on toggle."""
     try:
-        # Check if AWS credentials are configured
-        aws_key = st.secrets.get("aws", {}).get("access_key_id", "")
-        aws_secret = st.secrets.get("aws", {}).get("access_key", "") or st.secrets.get("aws", {}).get("secret_access_key", "")
-        
-        # If we have AWS credentials, we're potentially in live mode
-        if aws_key and aws_secret:
-            return False
-        
-        return True
+        return st.session_state.get('data_mode', 'demo') == 'demo'
     except:
         return True
 
 @st.cache_data(ttl=300)
 def get_business_metrics(days=30):
     return generate_business_metrics(days)
+
+def get_aws_credentials():
+    """Get AWS credentials from secrets."""
+    try:
+        aws_key = st.secrets.get("aws", {}).get("access_key_id", "")
+        aws_secret = st.secrets.get("aws", {}).get("access_key", "") or st.secrets.get("aws", {}).get("secret_access_key", "")
+        aws_region = st.secrets.get("aws", {}).get("default_region", "") or st.secrets.get("aws", {}).get("region", "us-east-1")
+        return aws_key, aws_secret, aws_region
+    except:
+        return "", "", "us-east-1"
+
+@st.cache_data(ttl=300, show_spinner=False)
+def fetch_live_aws_data():
+    """Fetch real data from AWS."""
+    try:
+        import boto3
+        from datetime import datetime, timedelta
+        
+        aws_key, aws_secret, aws_region = get_aws_credentials()
+        
+        if not aws_key or not aws_secret:
+            return None, "No credentials"
+        
+        workloads = []
+        
+        # Fetch EC2 instances from multiple regions
+        regions_to_check = ['us-east-1', 'us-west-2', 'eu-west-1', 'ap-southeast-1']
+        
+        for region in regions_to_check:
+            try:
+                ec2 = boto3.client(
+                    'ec2',
+                    aws_access_key_id=aws_key,
+                    aws_secret_access_key=aws_secret,
+                    region_name=region
+                )
+                
+                response = ec2.describe_instances()
+                
+                for reservation in response.get('Reservations', []):
+                    for instance in reservation.get('Instances', []):
+                        if instance.get('State', {}).get('Name') == 'running':
+                            # Get instance name from tags
+                            name = "Unnamed"
+                            workload_type = "general"
+                            business_unit = "Unknown"
+                            
+                            for tag in instance.get('Tags', []):
+                                if tag['Key'] == 'Name':
+                                    name = tag['Value']
+                                elif tag['Key'] == 'WorkloadType':
+                                    workload_type = tag['Value']
+                                elif tag['Key'] == 'BusinessUnit':
+                                    business_unit = tag['Value']
+                            
+                            instance_type = instance.get('InstanceType', 't3.medium')
+                            
+                            # Estimate cost based on instance type
+                            hourly_costs = {
+                                't3.micro': 0.0104, 't3.small': 0.0208, 't3.medium': 0.0416,
+                                't3.large': 0.0832, 't3.xlarge': 0.1664, 't3.2xlarge': 0.3328,
+                                'm5.large': 0.096, 'm5.xlarge': 0.192, 'm5.2xlarge': 0.384,
+                                'c5.large': 0.085, 'c5.xlarge': 0.17, 'c5.2xlarge': 0.34,
+                                'r5.large': 0.126, 'r5.xlarge': 0.252, 'r5.2xlarge': 0.504,
+                            }
+                            hourly = hourly_costs.get(instance_type, 0.10)
+                            monthly_cost = hourly * 730  # ~730 hours/month
+                            
+                            workloads.append({
+                                'workload_id': instance.get('InstanceId'),
+                                'workload_name': name,
+                                'workload_type': workload_type,
+                                'business_unit': business_unit,
+                                'region': region,
+                                'instance_type': instance_type,
+                                'instance_count': 1,
+                                'cpu_utilization': np.random.uniform(0.2, 0.8),  # Would need CloudWatch for real data
+                                'memory_utilization': np.random.uniform(0.3, 0.7),
+                                'monthly_cost': monthly_cost,
+                                'deferability_score': np.random.uniform(0.1, 0.9),
+                                'revenue_correlation': np.random.uniform(0.3, 0.8),
+                                'slo_latency_ms': 200,
+                                'current_latency_ms': 150,
+                            })
+            except Exception as e:
+                continue  # Skip regions that fail
+        
+        if workloads:
+            return pd.DataFrame(workloads), f"Found {len(workloads)} instances"
+        else:
+            return None, "No running instances found"
+            
+    except Exception as e:
+        return None, f"Error: {str(e)[:50]}"
+
+def get_workload_data():
+    """Get workload data based on current mode."""
+    if st.session_state.get('data_mode') == 'live':
+        aws_connected, _ = st.session_state.get('aws_status', (False, ""))
+        if aws_connected:
+            live_data, msg = fetch_live_aws_data()
+            if live_data is not None and len(live_data) > 0:
+                return live_data
+            else:
+                st.warning(f"⚠️ Could not fetch live data: {msg}. Using demo data.")
+    
+    # Fall back to demo data
+    return generate_workload_data(50)
 
 # =============================================================================
 # COMPONENTS
@@ -547,8 +701,9 @@ def render_sidebar():
     st.sidebar.markdown("### 🎯 Actions")
     
     if st.sidebar.button("🔄 Refresh Data", use_container_width=True):
-        st.session_state.workloads = generate_workload_data(50)
         st.cache_data.clear()
+        st.session_state.workloads = get_workload_data()
+        st.session_state.recommendations = []
         st.rerun()
     
     if st.sidebar.button("⚡ Run Optimization", use_container_width=True, type="primary"):
@@ -711,6 +866,13 @@ def render_business_intel(biz_metrics, opt_history):
 def main():
     render_header()
     render_sidebar()
+    
+    # Check if data mode changed and reload data
+    if st.session_state.get('data_mode') != st.session_state.get('last_data_mode'):
+        st.session_state.last_data_mode = st.session_state.get('data_mode')
+        st.cache_data.clear()
+        st.session_state.workloads = get_workload_data()
+        st.session_state.recommendations = []
     
     biz_metrics = get_business_metrics(30)
     opt_history = generate_optimization_history(20)
