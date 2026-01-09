@@ -793,8 +793,8 @@ def render_pareto(recs):
                             hovertemplate="<b>%{text}</b><br>Cost: %{x:.1f}%<br>Carbon: %{y:.1f}%<extra></extra>"))
     fig.update_layout(
         title=dict(text="Cost vs Carbon Trade-offs", font=dict(color="#f8fafc", size=14)),
-        xaxis=dict(title="Cost Savings (%)", gridcolor="rgba(71,85,105,0.5)", tickfont=dict(color="#94a3b8"), titlefont=dict(color="#e2e8f0")),
-        yaxis=dict(title="Carbon Reduction (%)", gridcolor="rgba(71,85,105,0.5)", tickfont=dict(color="#94a3b8"), titlefont=dict(color="#e2e8f0")),
+        xaxis=dict(title=dict(text="Cost Savings (%)", font=dict(color="#e2e8f0")), gridcolor="rgba(71,85,105,0.5)", tickfont=dict(color="#94a3b8")),
+        yaxis=dict(title=dict(text="Carbon Reduction (%)", font=dict(color="#e2e8f0")), gridcolor="rgba(71,85,105,0.5)", tickfont=dict(color="#94a3b8")),
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         font=dict(color="#e2e8f0"), height=400, margin=dict(l=60, r=20, t=40, b=40))
     st.plotly_chart(fig, use_container_width=True)
